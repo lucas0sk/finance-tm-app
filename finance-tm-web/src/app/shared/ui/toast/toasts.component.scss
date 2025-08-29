@@ -1,0 +1,9 @@
+.toast-stack .alert {
+    min-width: 280px;
+}
+
+@media (min-width: 992px) {
+    .toast-stack .alert {
+        min-width: 340px;
+    }
+}
