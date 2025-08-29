@@ -1,9 +1,10 @@
 import { UUID } from "../common";
-import { TransferStatus } from "../domain/enums";
+import { TransferStatus, UserRole } from "../domain/enums";
 
 export interface AuthResponse {
     accessToken: string;
     accountNumber: string;
+    userRole: UserRole;
 }
 
 export interface TransferResponse {
