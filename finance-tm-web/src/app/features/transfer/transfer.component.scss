@@ -1,0 +1,14 @@
+.kpi {
+    font-size: 1.25rem;
+    line-height: 1.1;
+}
+
+.tiny {
+    font-size: .85rem;
+}
+
+@media (min-width: 992px) {
+    .kpi {
+        font-size: 1.4rem;
+    }
+}
