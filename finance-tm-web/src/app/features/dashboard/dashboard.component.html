@@ -1,0 +1,82 @@
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0">Visão Geral</h4>
+    <a routerLink="/transfer" class="btn btn-success">Agendar transferência</a>
+</div>
+
+<div class="row g-3">
+    <div class="col-12 col-md-6">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body">
+                <div class="fw-semibold">Conta</div>
+                <div class="fs-5">{{ myAccount || '—' }}</div>
+                <div class="text-muted">Logado</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-md-6" *ngIf="balance() !== null">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body">
+                <div class="fw-semibold">Saldo</div>
+                <div class="display-6">{{ balance() | number:'1.2-2' }}</div>
+                <small class="text-muted">Atualizado agora</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h5 class="card-title mb-0">Últimas transferências</h5>
+                    <button class="btn btn-sm btn-outline-secondary" (click)="loadOverview()">Atualizar</button>
+                </div>
+
+                <div *ngIf="loading()" class="text-muted">Carregando…</div>
+                <div *ngIf="!loading() && transfers().length === 0" class="text-muted">Sem lançamentos</div>
+
+                <ul class="list-group list-group-flush" *ngIf="transfers().length > 0">
+                    <li class="list-group-item" *ngFor="let t of transfers()">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <div class="fw-semibold">
+                                    {{ t.fromAccount === myAccount ? 'Enviado' : 'Recebido' }}
+                                    <span class="badge ms-2" [ngClass]="{
+                                        'bg-secondary': t.status === 'PENDING',
+                                        'bg-success':   t.status === 'SUCCESS',
+                                        'bg-danger':    t.status === 'FAILED'
+                                        }">
+                                        {{ t.status }}
+                                    </span>
+
+                                </div>
+                                <small class="text-muted d-block">
+                                    {{ t.scheduledDate }} → {{ t.transferDate }} • {{ t.createdAt | date:'short' }}
+                                </small>
+                                <small class="text-muted d-block">
+                                    De: {{ t.fromAccount }} • Para: {{ t.toAccount }}
+                                </small>
+                                <small class="text-muted">
+                                    Taxas: fixo {{ t.feeFixed | number:'1.2-2' }},
+                                    % {{ t.feePercent | number:'1.2-2' }} ⇒ R$ {{ t.feeAmount | number:'1.2-2' }}
+                                </small>
+                            </div>
+
+                            <div class="text-end">
+                                <div class="fw-bold" [ngClass]="{
+                                                    'text-danger': t.fromAccount === myAccount,
+                                                    'text-success': t.toAccount === myAccount
+                                                    }">
+                                    {{ t.fromAccount === myAccount ? '-' : '+' }} R$ {{ t.totalAmount | number:'1.2-2' }}
+                                </div>
+                                <small class="text-muted">(valor: R$ {{ t.amount | number:'1.2-2' }})</small>
+                            </div>
+                        </div>
+                    </li>
+                </ul>
+
+                <div class="text-danger mt-2" *ngIf="error()">{{ error() }}</div>
+            </div>
+        </div>
+    </div>
+</div>
