@@ -1,19 +1,13 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { ApiService } from '../../../core/services/api.service';
-import { Account } from '../../../core/models/domain/account.domain';
-import { User } from '../../../core/models/domain/user.domain';
+import { AccountMeResponse } from '../../../core/models/dto/response';
+import { environment } from '../../../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class AccountService {
-    private _accounts = signal<Account[]>([]);
-    accounts = this._accounts.asReadonly();
+    constructor(private http: HttpClient) { }
 
-    constructor(private http: HttpClient, private api: ApiService) { }
-
-    loadMyAccounts() {
-        this.http.get<Account[]>(this.api.url('/accounts/me')).subscribe(res => this._accounts.set(res));
+    me() {
+        return this.http.get<AccountMeResponse>(`${environment.apiBaseUrl}/accounts/me`);
     }
-
-    listUsers() { return this.http.get<User[]>(this.api.url('/users')); }
 }

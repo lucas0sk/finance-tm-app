@@ -15,7 +15,7 @@ import { TransferResponse } from '../../core/models/dto/response';
     styleUrls: ['./dashboard.component.scss']
 })
 export class DashboardComponent {
-    myAccount!: string | null; 
+    myAccount: string | null = null;
     balance = signal<number | null>(null);
 
     page = signal<Page<TransferResponse> | null>(null);
@@ -35,9 +35,16 @@ export class DashboardComponent {
     loadOverview() {
         this.loading.set(true);
         this.error.set('');
-        this.accountSvc.loadMyAccounts?.(); // se seu service já carrega e mantém sinal
-        // alternativa: this.accountSvc.me().subscribe(acc => this.balance.set(acc.balance));S
 
+        this.accountSvc.me().subscribe({
+            next: (me) => {
+                this.myAccount = this.myAccount ?? me.accountNumber;
+                this.balance.set(+me.balance);
+            },
+            error: (err) => {
+                console.error('Falha ao carregar /accounts/me', err);
+            }
+        });
         this.transfersSvc.userExtract({ size: 5, sort: 'createdAt,desc' })
             .subscribe({
                 next: (p) => { this.page.set(p); this.loading.set(false); },

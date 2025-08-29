@@ -34,12 +34,10 @@ export class LoginComponent {
             .pipe(finalize(() => this.loading = false))
             .subscribe({
                 next: (res) => {
-                    // AuthResponse { accessToken, accountNumber }
                     this.auth.setSession(res);
                     this.router.navigateByUrl('/');
                 },
                 error: (err) => {
-                    // 401 trata logout no interceptor; aqui mostramos mensagem amigável
                     this.error = err?.error?.message || 'Usuário ou senha inválidos';
                 }
             });

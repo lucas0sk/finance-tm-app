@@ -20,3 +20,8 @@ export interface TransferResponse {
     status: TransferStatus;
     createdAt: string;
 }
+
+export interface AccountMeResponse {
+    accountNumber: string;
+    balance: number;
+}
