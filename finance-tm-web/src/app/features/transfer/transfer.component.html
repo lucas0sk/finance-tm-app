@@ -4,12 +4,21 @@
             <div class="card-body">
                 <h5 class="card-title">Nova Transferência</h5>
 
-                <form (ngSubmit)="f.valid && submit()" #f="ngForm" novalidate>
+                <div class="d-flex align-items-center gap-2 mb-3 small text-muted">
+                    <span>Saldo disponível:</span>
+                    <span class="fw-semibold" [class.text-success]="balance() !== null">
+                        R$ {{ (balance() ?? 0) | number:'1.2-2' }}
+                    </span>
+                    <span class="tip" [attr.data-tip]="'O total debitado inclui o valor + taxas.'">?</span>
+                </div>
+
+                <form (ngSubmit)="openCheckout(f)" #f="ngForm" novalidate>
                     <div class="mb-3">
                         <label class="form-label">Conta de Origem</label>
                         <input type="text" class="form-control" name="fromAccount" [(ngModel)]="fromAccount"
                             #from="ngModel" pattern="^\d{10}$" required [readOnly]="!isAdmin" inputmode="numeric"
-                            maxlength="10" [class.is-invalid]="f.submitted && from.invalid" />
+                            maxlength="10" (ngModelChange)="updateQuote()"
+                            [class.is-invalid]="f.submitted && from.invalid" />
                         <div class="form-text">Ex.: 1234567890</div>
                         <div class="invalid-feedback d-block" *ngIf="f.submitted && from.invalid">
                             A conta de origem deve ter 10 dígitos.
@@ -19,7 +28,7 @@
                     <div class="mb-3">
                         <label class="form-label">Conta de Destino</label>
                         <input type="text" class="form-control" name="toAccount" [(ngModel)]="toAccount" #to="ngModel"
-                            pattern="^\d{10}$" required autofocus inputmode="numeric" maxlength="10"
+                            pattern="^\d{10}$" required inputmode="numeric" maxlength="10"
                             [class.is-invalid]="f.submitted && to.invalid" />
                         <div class="form-text">Ex.: 0987654321</div>
                         <div class="invalid-feedback d-block" *ngIf="f.submitted && to.invalid">
@@ -32,7 +41,8 @@
                         <div class="input-group">
                             <span class="input-group-text">R$</span>
                             <input type="number" class="form-control" name="amount" [(ngModel)]="amount" #amt="ngModel"
-                                step="0.01" min="0.01" required [class.is-invalid]="f.submitted && amt.invalid" />
+                                step="0.01" min="0.01" required (ngModelChange)="updateQuote()"
+                                [class.is-invalid]="f.submitted && amt.invalid" />
                         </div>
                         <div class="invalid-feedback d-block" *ngIf="f.submitted && amt.invalid">
                             Informe um valor maior que zero.
@@ -42,18 +52,57 @@
                     <div class="mb-3">
                         <label class="form-label">Data da Transferência</label>
                         <input type="date" class="form-control" name="transferDate" [(ngModel)]="transferDate"
-                            #dt="ngModel" [min]="todayStr" required [class.is-invalid]="f.submitted && dt.invalid" />
+                            #dt="ngModel" [min]="todayStr" required (ngModelChange)="updateQuote()"
+                            [class.is-invalid]="f.submitted && dt.invalid" />
                         <div class="invalid-feedback d-block" *ngIf="f.submitted && dt.invalid">
                             Selecione uma data válida (hoje ou futura).
                         </div>
                     </div>
 
-                    <button class="btn btn-primary" [disabled]="f.invalid || loading">
+                    <div class="row g-3 mb-3">
+                        <div class="col-12 col-md">
+                            <div class="preview border rounded p-2 h-100 bg-light">
+                                <div class="small text-muted mb-1">Valor</div>
+                                <div class="h5 mb-0">R$ {{ amount | number:'1.2-2' }}</div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md">
+                            <div class="preview border rounded p-2 h-100">
+                                <div class="small text-muted mb-1">
+                                    Taxas
+                                    <span class="tip" [attr.data-tip]="'Fixo + percentual sobre o valor.'">?</span>
+                                </div>
+                                <div class="fw-semibold text-danger mb-1">R$ {{ q.feeAmount | number:'1.2-2' }}</div>
+                                <div class="small text-muted">
+                                    Fixo: R$ {{ q.feeFixed | number:'1.2-2' }} ·
+                                    %: {{ q.feePercent | number:'1.2-2' }}%
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md">
+                            <div class="preview border rounded p-2 h-100">
+                                <div class="small text-muted mb-1">
+                                    Total debitado
+                                    <span class="tip"
+                                        [attr.data-tip]="'Valor + taxas (só para quem envia). Se você vai receber, considere apenas o Valor.'">?</span>
+                                </div>
+                                <div class="fw-semibold" [class.text-danger]="fromAccount === myAccount"
+                                    [class.text-success]="toAccount === myAccount">
+                                    R$ {{ q.totalAmount | number:'1.2-2' }}
+                                </div>
+                                <div class="small text-muted" *ngIf="balance() !== null">
+                                    Saldo após: <strong [class.text-danger]="insufficient">
+                                        R$ {{ (balance()! - q.totalAmount) | number:'1.2-2' }}
+                                    </strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-primary" [disabled]="f.invalid || loading || insufficient"
+                        [attr.data-tip]="insufficient ? 'Saldo insuficiente para esta transferência.' : null">
                         {{ loading ? 'Enviando...' : 'Agendar' }}
                     </button>
-
-                    <span class="ms-2" *ngIf="success" aria-live="polite">Transferência agendada</span>
-                    <div class="text-danger mt-2" *ngIf="error">{{ error }}</div>
                 </form>
             </div>
         </div>
@@ -71,52 +120,145 @@
 
                 <ul class="list-group list-group-flush" *ngIf="transfers().length > 0">
                     <li class="list-group-item py-3" *ngFor="let t of transfers()">
-                        <div class="d-flex justify-content-between flex-wrap gap-2">
-                            <div>
-                                <div class="d-flex align-items-center gap-2 mb-1">
-                                    <span class="fw-semibold">
-                                        {{ t.fromAccount === myAccount ? 'Enviado' : 'Recebido' }}
-                                    </span>
-                                    <span class="badge" [ngClass]="{
+
+                        <ng-container *ngIf="!isAdmin(); else adminItem">
+                            <div class="d-flex justify-content-between flex-wrap gap-2">
+                                <div>
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        <span class="fw-semibold">
+                                            {{ t.fromAccount === myAccount ? 'Enviado' : 'Recebido' }}
+                                        </span>
+                                        <span class="badge" [ngClass]="{
                                             'bg-secondary': t.status === 'PENDING',
                                             'bg-success':   t.status === 'SUCCESS',
                                             'bg-danger':    t.status === 'FAILED'
                                             }">
-                                        {{ t.status }}
-                                    </span>
+                                            {{ t.status }}
+                                        </span>
+                                    </div>
+                                    <div class="text-muted small">
+                                        {{ t.scheduledDate }} → {{ t.transferDate }} • {{ t.createdAt | date:'short' }}
+                                    </div>
+                                    <div class="text-muted small">
+                                        De: {{ t.fromAccount }} • Para: {{ t.toAccount }}
+                                    </div>
                                 </div>
-                                <div class="text-muted small">
-                                    {{ t.scheduledDate }} → {{ t.transferDate }} • {{ t.createdAt | date:'short' }}
+
+                                <div class="text-end">
+                                    <div class="kpi fw-bold" [ngClass]="{
+                                            'text-danger': t.fromAccount === myAccount,
+                                            'text-success': t.toAccount === myAccount
+                                            }">
+                                        {{ t.fromAccount === myAccount ? '-' : '+' }}
+                                        R{{'\u0024'}} {{ (t.fromAccount === myAccount ? t.totalAmount : t.amount) |
+                                        number:'1.2-2' }}
+                                    </div>
+                                    <div class="tiny text-muted">
+                                        Valor R{{'\u0024'}} {{ t.amount | number:'1.2-2' }} •
+                                        Taxas R{{'\u0024'}} {{ t.feeAmount | number:'1.2-2' }} •
+                                        Total R{{'\u0024'}} {{ t.totalAmount | number:'1.2-2' }}
+                                    </div>
                                 </div>
-                                <div class="text-muted small">
-                                    De: {{ t.fromAccount }} • Para: {{ t.toAccount }}
+                            </div>
+                        </ng-container>
+
+                        <ng-template #adminItem>
+                            <div class="d-flex justify-content-between flex-wrap gap-2">
+                                <div>
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        <span class="fw-semibold">Transferência</span>
+                                        <span class="badge" [ngClass]="{
+                                            'bg-secondary': t.status === 'PENDING',
+                                            'bg-success':   t.status === 'SUCCESS',
+                                            'bg-danger':    t.status === 'FAILED'
+                                            }">
+                                            {{ t.status }}
+                                        </span>
+                                    </div>
+                                    <div class="text-muted small">
+                                        {{ t.scheduledDate }} → {{ t.transferDate }} • {{ t.createdAt | date:'short' }}
+                                    </div>
+                                    <div class="text-muted small">
+                                        De: {{ t.fromAccount }} → Para: {{ t.toAccount }}
+                                    </div>
+                                </div>
+
+                                <div class="text-end">
+                                    <div class="small text-muted text-uppercase">Totais</div>
+                                    <div class="fw-semibold">Credita (dest.): R{{'\u0024'}} {{ t.amount | number:'1.2-2'
+                                        }}</div>
+                                    <div class="fw-semibold">Debita (remet.): R{{'\u0024'}} {{ t.totalAmount |
+                                        number:'1.2-2' }}</div>
                                 </div>
                             </div>
 
-                            <div class="text-end">
-                                <div class="tiny text-muted">
-                                    Valor R$ {{ t.amount | number:'1.2-2' }} •
-                                    Taxas R$ {{ t.feeAmount | number:'1.2-2' }} •
-                                    Total R$ {{ t.totalAmount | number:'1.2-2' }}
-                                </div>
+                            <div class="tiny text-muted mt-1">
+                                Taxas: R{{'\u0024'}} {{ t.feeAmount | number:'1.2-2' }}
+                                (fixo R{{'\u0024'}} {{ t.feeFixed | number:'1.2-2' }} +
+                                % {{ t.feePercent | number:'1.2-2' }})
                             </div>
-                        </div>
+                        </ng-template>
+
                     </li>
                 </ul>
                 <nav *ngIf="page() as p" class="mt-3">
                     <ul class="pagination pagination-sm mb-0">
                         <li class="page-item" [class.disabled]="p.first">
-                            <button class="page-link" (click)="!p.first && goTo(p.number - 1)">«</button>
+                            <button class="page-link" (click)="!p.first && loadExtract(p.number - 1)">«</button>
                         </li>
                         <li class="page-item disabled">
                             <span class="page-link">{{ p.number + 1 }} / {{ p.totalPages || 1 }}</span>
                         </li>
                         <li class="page-item" [class.disabled]="p.last">
-                            <button class="page-link" (click)="!p.last && goTo(p.number + 1)">»</button>
+                            <button class="page-link" (click)="!p.last && loadExtract(p.number + 1)">»</button>
                         </li>
                     </ul>
                 </nav>
+            </div>
+        </div>
+    </div>
 
+</div>
+
+<div class="modal-backdrop fade show" *ngIf="showConfirm()"></div>
+<div class="modal d-block" tabindex="-1" *ngIf="showConfirm()">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirmar agendamento</h5>
+                <button type="button" class="btn-close" aria-label="Close" (click)="cancelCheckout()"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-2"><strong>De:</strong> {{ fromAccount }}</div>
+                <div class="mb-2"><strong>Para:</strong> {{ toAccount }}</div>
+                <div class="mb-2"><strong>Data:</strong> {{ transferDate }}</div>
+                <hr class="my-2">
+                <div class="d-flex justify-content-between">
+                    <span>Valor</span>
+                    <span>R$ {{ amount | number:'1.2-2' }}</span>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <span>Taxa fixa</span>
+                    <span>R$ {{ q.feeFixed | number:'1.2-2' }}</span>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <span>Taxa % ({{ q.feePercent | number:'1.2-2' }}%)</span>
+                    <span>R$ {{ (q.feeAmount - q.feeFixed) | number:'1.2-2' }}</span>
+                </div>
+                <hr class="my-2">
+                <div class="d-flex justify-content-between fw-semibold">
+                    <span>Total a debitar</span>
+                    <span class="text-danger">R$ {{ q.totalAmount | number:'1.2-2' }}</span>
+                </div>
+                <div class="small text-muted" *ngIf="balance() !== null">
+                    Saldo após: <strong [class.text-danger]="insufficient">
+                        R$ {{ (balance()! - q.totalAmount) | number:'1.2-2' }}
+                    </strong>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline-secondary" (click)="cancelCheckout()">Cancelar</button>
+                <button class="btn btn-primary" (click)="submit()" [disabled]="loading">Confirmar</button>
             </div>
         </div>
     </div>

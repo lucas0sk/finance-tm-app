@@ -1,3 +1,11 @@
+.is-invalid {
+    border-color: #dc3545;
+}
+
+.invalid-feedback {
+    font-size: .875rem;
+}
+
 .kpi {
     font-size: 1.25rem;
     line-height: 1.1;
@@ -7,8 +15,62 @@
     font-size: .85rem;
 }
 
-@media (min-width: 992px) {
-    .kpi {
-        font-size: 1.4rem;
-    }
+.preview {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, .04);
+}
+
+.tip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    margin-left: 6px;
+    border-radius: 50%;
+    background: #eef2f6;
+    color: #6c757d;
+    font-size: 12px;
+    cursor: help;
+    position: relative;
+}
+
+.tip::after {
+    content: attr(data-tip);
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: calc(100% + 8px);
+    background: #111;
+    color: #fff;
+    padding: .35rem .5rem;
+    border-radius: .375rem;
+    font-size: .75rem;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: .15s ease;
+    pointer-events: none;
+}
+
+.tip::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: calc(100% + 4px);
+    border: 6px solid transparent;
+    border-top-color: #111;
+    opacity: 0;
+    visibility: hidden;
+    transition: .15s ease;
+}
+
+.tip:hover::after,
+.tip:hover::before {
+    opacity: 1;
+    visibility: visible;
+}
+
+.modal-backdrop.show {
+    opacity: .3;
 }

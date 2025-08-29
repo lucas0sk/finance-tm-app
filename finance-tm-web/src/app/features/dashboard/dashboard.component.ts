@@ -16,8 +16,8 @@ import { TransferResponse } from '../../core/models/dto/response';
 })
 export class DashboardComponent {
     myAccount: string | null = null;
+    isAdmin!: () => boolean;
     balance = signal<number | null>(null);
-
     page = signal<Page<TransferResponse> | null>(null);
     transfers = computed(() => this.page()?.content ?? []);
     loading = signal(false);
@@ -29,6 +29,7 @@ export class DashboardComponent {
         private accountSvc: AccountService
     ) {
         this.myAccount = this.auth.accountNumber;
+        this.isAdmin = this.auth.isAdmin;
         this.loadOverview();
     }
 
@@ -37,18 +38,18 @@ export class DashboardComponent {
         this.error.set('');
 
         this.accountSvc.me().subscribe({
-            next: (me) => {
-                this.myAccount = this.myAccount ?? me.accountNumber;
-                this.balance.set(+me.balance);
-            },
-            error: (err) => {
-                console.error('Falha ao carregar /accounts/me', err);
-            }
+            next: (me) => { this.balance.set(+me.balance); this.myAccount = me.accountNumber; },
+            error: () => { }
         });
-        this.transfersSvc.userExtract({ size: 5, sort: 'createdAt,desc' })
-            .subscribe({
-                next: (p) => { this.page.set(p); this.loading.set(false); },
-                error: (err) => { this.error.set(err?.error?.message ?? 'Falha ao carregar'); this.loading.set(false); }
-            });
+
+        const obs = this.isAdmin()
+            ? this.transfersSvc.adminList({ size: 5, sort: 'createdAt,desc' })
+            : this.transfersSvc.userExtract({ size: 5, sort: 'createdAt,desc' });
+
+        obs.subscribe({
+            next: (p) => { this.page.set(p); this.loading.set(false); },
+            error: (err) => { this.error.set(err?.error?.message ?? 'Falha ao carregar'); this.loading.set(false); }
+        });
     }
+    isSender(t: TransferResponse) { return t.fromAccount === this.myAccount; }
 }

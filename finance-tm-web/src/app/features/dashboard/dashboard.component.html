@@ -1,5 +1,5 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h4 class="mb-0">Visão Geral</h4>
+    <h4 class="mb-0">Visão Geral {{isAdmin() ? '(Perfil ADMIN)' : ''}}</h4>
     <a routerLink="/transfer" class="btn btn-success">Agendar transferência</a>
 </div>
 
@@ -37,72 +37,121 @@
 
                 <ul class="list-group list-group-flush" *ngIf="transfers().length > 0">
                     <li class="list-group-item transfer-item" *ngFor="let t of transfers()">
-                        <div class="d-flex justify-content-between flex-wrap gap-2">
-                            <div class="me-auto">
-                                <div class="d-flex align-items-center gap-2 mb-1">
-                                    <span class="fw-semibold">
-                                        {{ t.fromAccount === myAccount ? 'Enviado' : 'Recebido' }}
-                                    </span>
-                                    <span class="badge" [ngClass]="{
+
+                        <ng-container *ngIf="!isAdmin(); else adminItem">
+                            <div class="d-flex justify-content-between flex-wrap gap-2">
+                                <div class="me-auto">
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        <span class="fw-semibold">{{ isSender(t) ? 'Enviado' : 'Recebido' }}</span>
+                                        <span class="badge" [ngClass]="{
                                             'bg-secondary': t.status === 'PENDING',
                                             'bg-success':   t.status === 'SUCCESS',
                                             'bg-danger':    t.status === 'FAILED'
-                                        }">
-                                        {{ t.status }}
-                                    </span>
-                                    <small class="text-muted">
-                                        {{ t.scheduledDate }} → {{ t.transferDate }} • {{ t.createdAt | date:'short' }}
-                                    </small>
-                                </div>
-
-                                <div class="text-muted small">
-                                    De: {{ t.fromAccount }} • Para: {{ t.toAccount }}
-                                </div>
-                            </div>
-
-                            <div class="text-end">
-                                <div class="display-6 fw-bold" [ngClass]="{
-                                            'text-danger': t.fromAccount === myAccount,
-                                            'text-success': t.toAccount === myAccount
-                                        }">
-                                    {{ t.fromAccount === myAccount ? '-' : '+' }} R$ {{ (t.fromAccount === myAccount ? t.totalAmount : t.amount) | number:'1.2-2' }}
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row g-3 mt-2">
-                            <div class="col-12 col-md">
-                                <div class="breakdown bg-light border rounded p-2 h-100">
-                                    <div class="small text-muted mb-1">Valor {{ t.fromAccount === myAccount ? 'transferido' : 'recebido' }}</div>
-                                    <div class="h5 mb-0 fw-semibold">R$ {{ t.amount | number:'1.2-2' }}</div>
-                                </div>
-                            </div>
-
-                            <div class="col-12 col-md">
-                                <div class="breakdown border rounded p-2 h-100">
-                                    <div class="small text-muted mb-1">Taxas</div>
-                                    <div class="fw-semibold text-danger mb-1">R$ {{ t.feeAmount | number:'1.2-2' }}
+                                        }">{{ t.status }}</span>
+                                        <small class="text-muted">{{ t.scheduledDate }} → {{ t.transferDate }} • {{
+                                            t.createdAt | date:'short' }}</small>
                                     </div>
-                                    <div class="small text-muted">
-                                        Fixo: R$ {{ t.feeFixed | number:'1.2-2' }} ·
-                                        %: R$ {{ (t.feeAmount - t.feeFixed) | number:'1.2-2' }}
-                                        ({{ t.feePercent | number:'1.2-2' }}%)
+                                    <div class="text-muted small">De: {{ t.fromAccount }} • Para: {{ t.toAccount }}
+                                    </div>
+                                </div>
+
+                                <div class="text-end">
+                                    <div class="display-6 fw-bold"
+                                        [ngClass]="{ 'text-danger': isSender(t), 'text-success': !isSender(t) }">
+                                        {{ isSender(t) ? '-' : '+' }} R$
+                                        {{ (isSender(t) ? t.totalAmount : t.amount) | number:'1.2-2' }}
                                     </div>
                                 </div>
                             </div>
 
-                            <div class="col-12 col-md">
-                                <div class="breakdown border rounded p-2 h-100">
-                                    <div class="small text-muted mb-1">Total</div>
-                                    <div class="fw-semibold" [ngClass]="{
-                                        'text-danger': t.fromAccount === myAccount,
-                                        'text-success': t.toAccount === myAccount
-                                        }">
-                                        R$ {{ t.totalAmount | number:'1.2-2' }}
+                            <div class="row g-3 mt-2">
+                                <div class="col-12 col-md">
+                                    <div class="breakdown bg-light border rounded p-2 h-100">
+                                        <div class="small text-muted mb-1">Valor {{ isSender(t) ? 'transferido' :
+                                            'recebido' }}</div>
+                                        <div class="h5 mb-0 fw-semibold">R$ {{ t.amount | number:'1.2-2' }}</div>
                                     </div>
-                                    <div class="small text-muted">Valor + taxas</div>
+                                </div>
+                                <div class="col-12 col-md">
+                                    <div class="breakdown border rounded p-2 h-100">
+                                        <div class="small text-muted mb-1">Taxas</div>
+                                        <div class="fw-semibold text-danger mb-1">R$ {{ t.feeAmount | number:'1.2-2' }}
+                                        </div>
+                                        <div class="small text-muted">
+                                            Fixo: R$ {{ t.feeFixed | number:'1.2-2' }} ·
+                                            %: R$ {{ (t.feeAmount - t.feeFixed) | number:'1.2-2' }} ({{ t.feePercent |
+                                            number:'1.2-2' }}%)
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-12 col-md">
+                                    <div class="breakdown border rounded p-2 h-100">
+                                        <div class="small text-muted mb-1">Total</div>
+                                        <div class="fw-semibold"
+                                            [ngClass]="{ 'text-danger': isSender(t), 'text-success': !isSender(t) }">
+                                            R$ {{ t.totalAmount | number:'1.2-2' }}
+                                        </div>
+                                        <div class="small text-muted">Valor + taxas</div>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        </ng-container>
+
+                        <ng-template #adminItem>
+                            <div class="d-flex justify-content-between flex-wrap gap-2">
+                                <div class="me-auto">
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        <span class="fw-semibold">Transferência</span>
+                                        <span class="badge" [ngClass]="{
+                                            'bg-secondary': t.status === 'PENDING',
+                                            'bg-success':   t.status === 'SUCCESS',
+                                            'bg-danger':    t.status === 'FAILED'
+                                        }">{{ t.status }}</span>
+                                        <small class="text-muted">{{ t.scheduledDate }} → {{ t.transferDate }} • {{
+                                            t.createdAt | date:'short' }}</small>
+                                    </div>
+                                    <div class="text-muted small">De: {{ t.fromAccount }} → Para: {{ t.toAccount }}
+                                    </div>
+                                </div>
+
+                                <div class="text-end">
+                                    <div class="small text-muted text-uppercase">Totais</div>
+                                    <div class="fw-semibold">Entra (destinatário): R$ {{ t.amount | number:'1.2-2' }}
+                                    </div>
+                                    <div class="fw-semibold">Sai (remetente): R$ {{ t.totalAmount | number:'1.2-2' }}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row g-3 mt-2">
+                                <div class="col-12 col-md">
+                                    <div class="breakdown bg-light border rounded p-2 h-100">
+                                        <div class="small text-muted mb-1">Valor (destinatário)</div>
+                                        <div class="h5 mb-0 fw-semibold">R$ {{ t.amount | number:'1.2-2' }}</div>
+                                    </div>
+                                </div>
+                                <div class="col-12 col-md">
+                                    <div class="breakdown border rounded p-2 h-100">
+                                        <div class="small text-muted mb-1">Taxas</div>
+                                        <div class="fw-semibold text-danger mb-1">R$ {{ t.feeAmount | number:'1.2-2' }}
+                                        </div>
+                                        <div class="small text-muted">
+                                            Fixo: R$ {{ t.feeFixed | number:'1.2-2' }} ·
+                                            %: R$ {{ (t.feeAmount - t.feeFixed) | number:'1.2-2' }} ({{ t.feePercent |
+                                            number:'1.2-2' }}%)
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-12 col-md">
+                                    <div class="breakdown border rounded p-2 h-100">
+                                        <div class="small text-muted mb-1">Total debitado (remetente)</div>
+                                        <div class="fw-semibold">R$ {{ t.totalAmount | number:'1.2-2' }}</div>
+                                        <div class="small text-muted">Valor + taxas</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </ng-template>
+
                     </li>
                 </ul>
 
