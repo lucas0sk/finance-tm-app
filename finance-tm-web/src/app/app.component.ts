@@ -3,12 +3,13 @@ import { Router, NavigationEnd, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { NgIf } from '@angular/common';
 import { TopbarComponent } from './shared/ui/topbar/topbar.component';
+import { ToastsComponent } from './shared/ui/toast/toasts.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
   templateUrl: './app.component.html',
-  imports: [RouterOutlet, NgIf, TopbarComponent]
+  imports: [RouterOutlet, NgIf, TopbarComponent, ToastsComponent]
 })
 export class AppComponent {
   private authPaths = new Set(['/login', '/register']);
